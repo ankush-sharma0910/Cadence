@@ -20,6 +20,9 @@ struct DashboardView: View {
         Goal(name: "Flute", target: 7, progress: 0)
     ]
 
+    // Sample schedule for now. Real, saved entries come later.
+    @State private var scheduleEntries: [ScheduleEntry] = ScheduleEntry.samples
+
     var body: some View {
         HStack(spacing: 0) {
             sidebar
@@ -45,8 +48,7 @@ struct DashboardView: View {
                 // Bottom row: schedule | to-do
                 HStack(spacing: 0) {
                     section(title: weekdayTitle) {
-                        scheduleRow(time: "2:30 – 3:30", activity: "Example activity")
-                        Spacer()
+                        ScheduleView(entries: todaysEntries)
                     }
                     verticalLine
                     section(title: todoTitle) { Spacer() }
@@ -56,6 +58,14 @@ struct DashboardView: View {
         .background(Theme.background)
         .frame(minWidth: 840, minHeight: 600)
         .preferredColorScheme(.dark)
+    }
+
+    // MARK: - Schedule
+
+    // Only the entries that belong to today's weekday.
+    private var todaysEntries: [ScheduleEntry] {
+        let weekday = Calendar.current.component(.weekday, from: today)
+        return scheduleEntries.filter { $0.weekday == weekday }
     }
 
     // MARK: - Goals
@@ -135,18 +145,6 @@ struct DashboardView: View {
         }
         .padding(Theme.padding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-
-    private func scheduleRow(time: String, activity: String) -> some View {
-        HStack(spacing: 16) {
-            Text(time)
-                .font(.system(size: 13).monospacedDigit())
-                .foregroundStyle(Theme.textSecondary)
-                .frame(width: 100, alignment: .leading)
-            Text(activity)
-                .font(.system(size: 14))
-                .foregroundStyle(Theme.textPrimary)
-        }
     }
 
     private var horizontalLine: some View {
