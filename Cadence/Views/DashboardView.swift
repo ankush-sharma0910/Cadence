@@ -23,6 +23,9 @@ struct DashboardView: View {
     // Sample schedule for now. Real, saved entries come later.
     @State private var scheduleEntries: [ScheduleEntry] = ScheduleEntry.samples
 
+    // Sample tasks for now. Real, saved tasks come later.
+    @State private var todos: [TodoItem] = TodoItem.samples
+
     var body: some View {
         HStack(spacing: 0) {
             sidebar
@@ -51,7 +54,9 @@ struct DashboardView: View {
                         ScheduleView(entries: todaysEntries)
                     }
                     verticalLine
-                    section(title: todoTitle) { Spacer() }
+                    section(title: todoTitle) {
+                        TodoView(todos: $todos, date: selectedDate)
+                    }
                 }
             }
         }
