@@ -12,6 +12,14 @@ struct DashboardView: View {
     @State private var selectedDate = Date()
     private let today = Date()
 
+    // Sample goals for now. Real, saved goals come later.
+    @State private var goals: [Goal] = [
+        Goal(name: "Coding", target: 20, progress: 10),
+        Goal(name: "LeetCode", target: 10, progress: 7),
+        Goal(name: "Running", target: 5, progress: 1),
+        Goal(name: "Flute", target: 7, progress: 0)
+    ]
+
     var body: some View {
         HStack(spacing: 0) {
             sidebar
@@ -28,8 +36,9 @@ struct DashboardView: View {
                 horizontalLine
 
                 // Goals strip
-                section(title: "GOALS") { Spacer() }
-                    .frame(height: 200)
+                section(title: "GOALS") { goalsRow }
+                    .frame(height: 210)
+                    .overlay(alignment: .bottomTrailing) { editGoalsButton }
 
                 horizontalLine
 
@@ -47,6 +56,27 @@ struct DashboardView: View {
         .background(Theme.background)
         .frame(minWidth: 840, minHeight: 600)
         .preferredColorScheme(.dark)
+    }
+
+    // MARK: - Goals
+
+    private var goalsRow: some View {
+        HStack(spacing: 40) {
+            ForEach(goals) { goal in
+                GoalRingView(goal: goal)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var editGoalsButton: some View {
+        Button { } label: {
+            Image(systemName: "pencil")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.textSecondary)
+        }
+        .buttonStyle(.plain)
+        .padding(Theme.padding)
     }
 
     // MARK: - Left panel
