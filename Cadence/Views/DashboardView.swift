@@ -28,12 +28,8 @@ struct DashboardView: View {
             verticalLine
 
             VStack(spacing: 0) {
-                // Top: your editable line (placeholder for now)
-                Text("Write a line worth remembering…")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Theme.textSecondary)
-                    .padding(.horizontal, Theme.padding)
-                    .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+                // Top: your own editable line
+                EditableLineView()
 
                 horizontalLine
 
