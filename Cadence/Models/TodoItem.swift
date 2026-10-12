@@ -7,14 +7,14 @@
 
 import Foundation
 
-struct TodoItem: Identifiable {
-    let id = UUID()
+struct TodoItem: Identifiable, Codable, Equatable {
+    var id = UUID()
     var title: String
     var isDone = false
     var date: Date          // the day this task belongs to
 }
 
-// Sample tasks for today. Saved tasks come later.
+// Starting tasks, used only when nothing has been saved yet.
 extension TodoItem {
     static var samples: [TodoItem] {
         let today = Date()

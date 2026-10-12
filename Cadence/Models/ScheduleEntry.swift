@@ -7,8 +7,8 @@
 
 import Foundation
 
-struct ScheduleEntry: Identifiable {
-    let id = UUID()
+struct ScheduleEntry: Identifiable, Codable, Equatable {
+    var id = UUID()
     var weekday: Int        // 1 = Sunday ... 7 = Saturday
     var startMinutes: Int   // minutes since midnight, e.g. 870 = 2:30 PM
     var endMinutes: Int
@@ -46,7 +46,7 @@ struct ScheduleEntry: Identifiable {
     }
 }
 
-// Sample data: the same day repeated for all seven weekdays.
+// Starting schedule, used only when nothing has been saved yet.
 extension ScheduleEntry {
     static var samples: [ScheduleEntry] {
         let template: [(start: Int, end: Int, title: String)] = [

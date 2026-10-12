@@ -12,19 +12,15 @@ struct DashboardView: View {
     @State private var selectedDate = Date()
     private let today = Date()
 
-    // Sample goals for now. Real, saved goals come later.
-    @State private var goals: [Goal] = [
-        Goal(name: "Coding", target: 20, progress: 10),
-        Goal(name: "LeetCode", target: 10, progress: 7),
-        Goal(name: "Running", target: 5, progress: 1),
-        Goal(name: "Flute", target: 7, progress: 0)
-    ]
+    // Each list loads from disk. If nothing is saved yet, it uses the samples.
+    @State private var goals: [Goal] =
+        Storage.load([Goal].self, from: "goals") ?? Goal.samples
 
-    // Sample schedule for now. Real, saved entries come later.
-    @State private var scheduleEntries: [ScheduleEntry] = ScheduleEntry.samples
+    @State private var scheduleEntries: [ScheduleEntry] =
+        Storage.load([ScheduleEntry].self, from: "schedule") ?? ScheduleEntry.samples
 
-    // Sample tasks for now. Real, saved tasks come later.
-    @State private var todos: [TodoItem] = TodoItem.samples
+    @State private var todos: [TodoItem] =
+        Storage.load([TodoItem].self, from: "todos") ?? TodoItem.samples
 
     var body: some View {
         HStack(spacing: 0) {
@@ -63,6 +59,10 @@ struct DashboardView: View {
         .background(Theme.background)
         .frame(minWidth: 840, minHeight: 600)
         .preferredColorScheme(.dark)
+        // Save automatically whenever a list changes.
+        .onChange(of: goals) { Storage.save(goals, as: "goals") }
+        .onChange(of: scheduleEntries) { Storage.save(scheduleEntries, as: "schedule") }
+        .onChange(of: todos) { Storage.save(todos, as: "todos") }
     }
 
     // MARK: - Schedule
