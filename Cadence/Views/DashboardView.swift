@@ -8,21 +8,17 @@
 import SwiftUI
 
 struct DashboardView: View {
+    // The shared data store, provided by CadenceApp.
+    @Environment(AppStore.self) private var store
+
     // The date whose to-do list is shown. Starts as today.
     @State private var selectedDate = Date()
     private let today = Date()
 
-    // Each list loads from disk. If nothing is saved yet, it uses the samples.
-    @State private var goals: [Goal] =
-        Storage.load([Goal].self, from: "goals") ?? Goal.samples
-
-    @State private var scheduleEntries: [ScheduleEntry] =
-        Storage.load([ScheduleEntry].self, from: "schedule") ?? ScheduleEntry.samples
-
-    @State private var todos: [TodoItem] =
-        Storage.load([TodoItem].self, from: "todos") ?? TodoItem.samples
-
     var body: some View {
+        // Lets us pass two-way links like $store.todos to child views.
+        @Bindable var store = store
+
         HStack(spacing: 0) {
             sidebar
             verticalLine
@@ -47,7 +43,7 @@ struct DashboardView: View {
                     }
                     verticalLine
                     section(title: todoTitle) {
-                        TodoView(todos: $todos, date: selectedDate)
+                        TodoView(todos: $store.todos, date: selectedDate)
                     }
                 }
             }
@@ -55,10 +51,6 @@ struct DashboardView: View {
         .background(Theme.background)
         .frame(minWidth: 840, minHeight: 600)
         .preferredColorScheme(.dark)
-        // Save automatically whenever a list changes.
-        .onChange(of: goals) { Storage.save(goals, as: "goals") }
-        .onChange(of: scheduleEntries) { Storage.save(scheduleEntries, as: "schedule") }
-        .onChange(of: todos) { Storage.save(todos, as: "todos") }
     }
 
     // MARK: - Schedule
@@ -66,14 +58,14 @@ struct DashboardView: View {
     // Only the entries that belong to today's weekday.
     private var todaysEntries: [ScheduleEntry] {
         let weekday = Calendar.current.component(.weekday, from: today)
-        return scheduleEntries.filter { $0.weekday == weekday }
+        return store.scheduleEntries.filter { $0.weekday == weekday }
     }
 
     // MARK: - Goals
 
     private var goalsRow: some View {
         HStack(spacing: 40) {
-            ForEach(goals) { goal in
+            ForEach(store.goals) { goal in
                 GoalRingView(goal: goal)
             }
         }
@@ -159,4 +151,5 @@ struct DashboardView: View {
 
 #Preview {
     DashboardView()
+        .environment(AppStore())
 }
