@@ -8,7 +8,9 @@
 import SwiftUI
 
 struct GoalRingView: View {
-    let goal: Goal
+    let name: String
+    let fraction: Double     // 0.0 to 1.0
+    let detail: String       // e.g. "1 / 2 problems"
 
     var body: some View {
         VStack(spacing: 10) {
@@ -19,31 +21,37 @@ struct GoalRingView: View {
 
                 // White arc showing progress
                 Circle()
-                    .trim(from: 0, to: goal.percentage)
+                    .trim(from: 0, to: fraction)
                     .stroke(Theme.textPrimary,
                             style: StrokeStyle(lineWidth: 6, lineCap: .round))
                     .rotationEffect(.degrees(-90))   // start at the top
-                    .animation(.easeInOut(duration: 0.6), value: goal.percentage)
+                    .animation(.easeInOut(duration: 0.6), value: fraction)
 
                 // Percentage in the centre
-                Text("\(Int(goal.percentage * 100))%")
+                Text("\(Int((fraction * 100).rounded()))%")
                     .font(.system(size: 18, weight: .medium).monospacedDigit())
                     .foregroundStyle(Theme.textPrimary)
             }
             .frame(width: 84, height: 84)
 
-            // Goal name under the ring
-            Text(goal.name)
-                .font(.system(size: 12))
-                .foregroundStyle(Theme.textSecondary)
-                .lineLimit(1)
-                .frame(width: 96)
+            VStack(spacing: 2) {
+                Text(name)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.textSecondary)
+                    .lineLimit(1)
+
+                Text(detail)
+                    .font(.system(size: 10).monospacedDigit())
+                    .foregroundStyle(Theme.textSecondary.opacity(0.7))
+                    .lineLimit(1)
+            }
+            .frame(width: 110)
         }
     }
 }
 
 #Preview {
-    GoalRingView(goal: Goal(name: "Coding", target: 20, progress: 10))
+    GoalRingView(name: "Coding", fraction: 0.5, detail: "1.5 / 3 hours")
         .padding()
         .background(Theme.background)
 }

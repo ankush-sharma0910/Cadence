@@ -17,6 +17,10 @@ final class AppStore {
         didSet { Storage.save(goals, as: "goals") }
     }
 
+    var goalLogs: [GoalLog] {
+        didSet { Storage.save(goalLogs, as: "goalLogs") }
+    }
+
     var scheduleEntries: [ScheduleEntry] {
         didSet { Storage.save(scheduleEntries, as: "schedule") }
     }
@@ -35,12 +39,53 @@ final class AppStore {
 
     // Runs once when the store is created: load saved data, or use samples.
     init() {
-        goals = Storage.load([Goal].self, from: "goals") ?? Goal.samples
+        let loadedGoals = Storage.load([Goal].self, from: "goals")
+        goals = loadedGoals ?? Goal.samples
+        goalLogs = Storage.load([GoalLog].self, from: "goalLogs") ?? []
         scheduleEntries = Storage.load([ScheduleEntry].self, from: "schedule") ?? ScheduleEntry.samples
         todos = Storage.load([TodoItem].self, from: "todos") ?? TodoItem.samples
         monthlyRecords = Storage.load([MonthlyRecord].self, from: "monthly") ?? []
+
+        // New sample goals get fresh ids. Save them straight away, otherwise
+        // logged entries would point at ids that disappear on the next launch.
+        if loadedGoals == nil {
+            Storage.save(goals, as: "goals")
+        }
+
         refreshMonthlyRecords()
     }
+
+    // MARK: - Goal progress
+
+    // Entries for a goal inside the current day, week or month (newest first).
+    func logs(for goal: Goal, on date: Date = Date()) -> [GoalLog] {
+        guard let interval = Calendar.current.dateInterval(of: goal.period.calendarComponent,
+                                                           for: date) else { return [] }
+        return goalLogs
+            .filter { $0.goalID == goal.id && interval.contains($0.date) }
+            .sorted { $0.date > $1.date }
+    }
+
+    // Total logged in the current period, e.g. 4.5 (km).
+    func progress(for goal: Goal, on date: Date = Date()) -> Double {
+        logs(for: goal, on: date).reduce(0) { $0 + $1.amount }
+    }
+
+    // 0.0 to 1.0, stopping at 1.0 even if you log more than the target.
+    func fraction(for goal: Goal) -> Double {
+        guard goal.target > 0 else { return 0 }
+        return min(progress(for: goal) / goal.target, 1.0)
+    }
+
+    func addLog(for goal: Goal, amount: Double) {
+        goalLogs.append(GoalLog(goalID: goal.id, date: Date(), amount: amount))
+    }
+
+    func deleteLog(_ log: GoalLog) {
+        goalLogs.removeAll { $0.id == log.id }
+    }
+
+    // MARK: - Monthly history
 
     // Recalculates every month that still has tasks. Months whose tasks are gone
     // keep their last saved record, so history is never lost.

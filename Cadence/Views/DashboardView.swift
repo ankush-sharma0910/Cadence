@@ -15,6 +15,9 @@ struct DashboardView: View {
     @State private var selectedDate = Date()
     private let today = Date()
 
+    // Whether the "Log progress" popover is open.
+    @State private var showLogPanel = false
+
     var body: some View {
         // Lets us pass two-way links like $store.todos to child views.
         @Bindable var store = store
@@ -31,7 +34,7 @@ struct DashboardView: View {
 
                 // Goals strip
                 section(title: "GOALS") { goalsRow }
-                    .frame(height: 210)
+                    .frame(height: 220)
                     .overlay(alignment: .bottomTrailing) { editGoalsButton }
 
                 horizontalLine
@@ -64,9 +67,13 @@ struct DashboardView: View {
     // MARK: - Goals
 
     private var goalsRow: some View {
-        HStack(spacing: 40) {
+        HStack(spacing: 32) {
             ForEach(store.goals) { goal in
-                GoalRingView(goal: goal)
+                GoalRingView(
+                    name: goal.name,
+                    fraction: store.fraction(for: goal),
+                    detail: "\(store.progress(for: goal).cleaned) / \(goal.target.cleaned) \(goal.unit)"
+                )
             }
         }
         .frame(maxWidth: .infinity)
@@ -86,6 +93,7 @@ struct DashboardView: View {
 
     private var sidebar: some View {
         VStack(spacing: 20) {
+            // Add something new
             Menu {
                 Button("New goal") { }
                 Button("New schedule entry") { }
@@ -99,6 +107,20 @@ struct DashboardView: View {
             .menuIndicator(.hidden)
             .fixedSize()
 
+            // Log progress on a goal
+            Button { showLogPanel = true } label: {
+                Image(systemName: "checkmark.circle")
+                    .font(.system(size: 16))
+                    .foregroundStyle(Theme.textPrimary)
+            }
+            .buttonStyle(.plain)
+            .help("Log goal progress")
+            .popover(isPresented: $showLogPanel) {
+                LogProgressView()
+                    .environment(store)
+            }
+
+            // Search by date (coming later)
             Button { } label: {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 16))
