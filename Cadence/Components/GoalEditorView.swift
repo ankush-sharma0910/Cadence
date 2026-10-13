@@ -17,6 +17,12 @@ struct GoalEditorView: View {
     @State private var newUnit = ""
     @State private var newPeriod: GoalPeriod = .daily
 
+    // Which field has keyboard focus when the panel opens.
+    private enum Field: Hashable {
+        case newName
+    }
+    @FocusState private var focusedField: Field?
+
     // The typed target as a number, or nil if it is empty, not a number, or not above zero.
     private var parsedTarget: Double? {
         let text = newTarget
@@ -40,8 +46,12 @@ struct GoalEditorView: View {
                 .tracking(1.5)
                 .foregroundStyle(Theme.textSecondary)
 
+            // The empty new-goal form comes first, so the first text field
+            // macOS focuses has nothing in it to highlight.
+            addForm
+
             if store.goals.isEmpty {
-                Text("No goals yet. Add one below.")
+                Text("No goals yet. Add your first one above.")
                     .font(.system(size: 13))
                     .foregroundStyle(Theme.textSecondary)
             } else {
@@ -58,13 +68,12 @@ struct GoalEditorView: View {
                 }
                 .frame(maxHeight: 340)
             }
-
-            addForm
         }
         .padding(Theme.padding)
         .frame(width: 380)
         .background(Theme.background)
         .preferredColorScheme(.dark)
+        .defaultFocus($focusedField, .newName)
     }
 
     // MARK: - New goal form
@@ -78,6 +87,7 @@ struct GoalEditorView: View {
 
             TextField("Name, e.g. Running", text: $newName)
                 .inputBox()
+                .focused($focusedField, equals: .newName)
 
             HStack(spacing: 8) {
                 TextField("Target", text: $newTarget)
@@ -102,8 +112,8 @@ struct GoalEditorView: View {
                 .opacity(canAdd ? 1 : 0.3)
                 .disabled(!canAdd)
         }
-        .padding(.top, 14)
-        .overlay(alignment: .top) {
+        .padding(.bottom, 14)
+        .overlay(alignment: .bottom) {
             Rectangle().fill(Theme.separator).frame(height: 1)
         }
         .onSubmit { if canAdd { addGoal() } }   // Return adds the goal
@@ -124,6 +134,7 @@ struct GoalEditorView: View {
         newTarget = ""
         newUnit = ""
         newPeriod = .daily
+        focusedField = .newName      // ready for the next goal
     }
 }
 
