@@ -15,8 +15,9 @@ struct DashboardView: View {
     @State private var selectedDate = Date()
     private let today = Date()
 
-    // Whether the "Log progress" popover is open.
+    // Whether the popovers are open.
     @State private var showLogPanel = false
+    @State private var showGoalEditor = false
 
     var body: some View {
         // Lets us pass two-way links like $store.todos to child views.
@@ -66,27 +67,45 @@ struct DashboardView: View {
 
     // MARK: - Goals
 
+    @ViewBuilder
     private var goalsRow: some View {
-        HStack(spacing: 32) {
-            ForEach(store.goals) { goal in
-                GoalRingView(
-                    name: goal.name,
-                    fraction: store.fraction(for: goal),
-                    detail: "\(store.progress(for: goal).cleaned) / \(goal.target.cleaned) \(goal.unit)"
-                )
+        if store.shownGoals.isEmpty {
+            Text("No goals shown. Click the pencil to choose.")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.textSecondary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            // Centred when it fits, scrolls sideways when there are many goals.
+            GeometryReader { geometry in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 32) {
+                        ForEach(store.shownGoals) { goal in
+                            GoalRingView(
+                                name: goal.name,
+                                fraction: store.fraction(for: goal),
+                                detail: "\(store.progress(for: goal).cleaned) / \(goal.target.cleaned) \(goal.unit)"
+                            )
+                        }
+                    }
+                    .frame(minWidth: geometry.size.width)
+                }
             }
         }
-        .frame(maxWidth: .infinity)
     }
 
     private var editGoalsButton: some View {
-        Button { } label: {
+        Button { showGoalEditor = true } label: {
             Image(systemName: "pencil")
                 .font(.system(size: 13))
                 .foregroundStyle(Theme.textSecondary)
         }
         .buttonStyle(.plain)
+        .help("Edit goals")
         .padding(Theme.padding)
+        .popover(isPresented: $showGoalEditor) {
+            GoalEditorView()
+                .environment(store)
+        }
     }
 
     // MARK: - Left panel
@@ -95,7 +114,7 @@ struct DashboardView: View {
         VStack(spacing: 20) {
             // Add something new
             Menu {
-                Button("New goal") { }
+                Button("New goal") { showGoalEditor = true }
                 Button("New schedule entry") { }
                 Button("New to-do") { }
             } label: {

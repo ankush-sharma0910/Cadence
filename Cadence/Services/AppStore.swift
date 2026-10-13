@@ -55,6 +55,23 @@ final class AppStore {
         refreshMonthlyRecords()
     }
 
+    // MARK: - Goals
+
+    // The goals that appear on the dashboard.
+    var shownGoals: [Goal] {
+        goals.filter { $0.isShown }
+    }
+
+    func addGoal(name: String, unit: String, target: Double, period: GoalPeriod) {
+        goals.append(Goal(name: name, unit: unit, target: target, period: period))
+    }
+
+    // Deletes the goal and every entry logged for it.
+    func deleteGoal(_ goal: Goal) {
+        goals.removeAll { $0.id == goal.id }
+        goalLogs.removeAll { $0.goalID == goal.id }
+    }
+
     // MARK: - Goal progress
 
     // Entries for a goal inside the current day, week or month (newest first).
