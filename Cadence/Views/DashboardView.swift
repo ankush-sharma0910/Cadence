@@ -18,6 +18,7 @@ struct DashboardView: View {
     // Whether the popovers are open.
     @State private var showLogPanel = false
     @State private var showGoalEditor = false
+    @State private var showScheduleEditor = false
 
     var body: some View {
         // Lets us pass two-way links like $store.todos to child views.
@@ -45,7 +46,10 @@ struct DashboardView: View {
                     section(title: weekdayTitle) {
                         ScheduleView(entries: todaysEntries)
                     }
+                    .overlay(alignment: .bottomTrailing) { editScheduleButton }
+
                     verticalLine
+
                     section(title: todoTitle) {
                         TodoView(todos: $store.todos, date: selectedDate)
                     }
@@ -63,6 +67,21 @@ struct DashboardView: View {
     private var todaysEntries: [ScheduleEntry] {
         let weekday = Calendar.current.component(.weekday, from: today)
         return store.scheduleEntries.filter { $0.weekday == weekday }
+    }
+
+    private var editScheduleButton: some View {
+        Button { showScheduleEditor = true } label: {
+            Image(systemName: "pencil")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.textSecondary)
+        }
+        .buttonStyle(.plain)
+        .help("Edit your usual schedule")
+        .padding(Theme.padding)
+        .popover(isPresented: $showScheduleEditor) {
+            ScheduleEditorView()
+                .environment(store)
+        }
     }
 
     // MARK: - Goals
@@ -115,7 +134,7 @@ struct DashboardView: View {
             // Add something new
             Menu {
                 Button("New goal") { showGoalEditor = true }
-                Button("New schedule entry") { }
+                Button("New schedule entry") { showScheduleEditor = true }
                 Button("New to-do") { }
             } label: {
                 Image(systemName: "plus")

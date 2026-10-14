@@ -102,6 +102,23 @@ final class AppStore {
         goalLogs.removeAll { $0.id == log.id }
     }
 
+    // MARK: - Schedule
+
+    // Adds one entry for each chosen weekday (1 = Sunday ... 7 = Saturday).
+    func addScheduleEntries(title: String, startMinutes: Int, endMinutes: Int, weekdays: Set<Int>) {
+        let newEntries = weekdays.sorted().map { weekday in
+            ScheduleEntry(weekday: weekday,
+                          startMinutes: startMinutes,
+                          endMinutes: endMinutes,
+                          title: title)
+        }
+        scheduleEntries.append(contentsOf: newEntries)
+    }
+
+    func deleteScheduleEntry(id: UUID) {
+        scheduleEntries.removeAll { $0.id == id }
+    }
+
     // MARK: - Monthly history
 
     // Recalculates every month that still has tasks. Months whose tasks are gone
