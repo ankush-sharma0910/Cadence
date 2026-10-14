@@ -21,8 +21,14 @@ final class AppStore {
         didSet { Storage.save(goalLogs, as: "goalLogs") }
     }
 
+    // Your USUAL schedule: entries that repeat every week on their weekday.
     var scheduleEntries: [ScheduleEntry] {
         didSet { Storage.save(scheduleEntries, as: "schedule") }
+    }
+
+    // Schedules that belong to one particular date only.
+    var dayOverrides: [DayOverride] {
+        didSet { Storage.save(dayOverrides, as: "dayOverrides") }
     }
 
     var todos: [TodoItem] {
@@ -43,6 +49,7 @@ final class AppStore {
         goals = loadedGoals ?? Goal.samples
         goalLogs = Storage.load([GoalLog].self, from: "goalLogs") ?? []
         scheduleEntries = Storage.load([ScheduleEntry].self, from: "schedule") ?? ScheduleEntry.samples
+        dayOverrides = Storage.load([DayOverride].self, from: "dayOverrides") ?? []
         todos = Storage.load([TodoItem].self, from: "todos") ?? TodoItem.samples
         monthlyRecords = Storage.load([MonthlyRecord].self, from: "monthly") ?? []
 
@@ -102,7 +109,7 @@ final class AppStore {
         goalLogs.removeAll { $0.id == log.id }
     }
 
-    // MARK: - Schedule
+    // MARK: - Usual schedule
 
     // Adds one entry for each chosen weekday (1 = Sunday ... 7 = Saturday).
     func addScheduleEntries(title: String, startMinutes: Int, endMinutes: Int, weekdays: Set<Int>) {
@@ -117,6 +124,68 @@ final class AppStore {
 
     func deleteScheduleEntry(id: UUID) {
         scheduleEntries.removeAll { $0.id == id }
+    }
+
+    // The usual schedule for the weekday of a date.
+    func usualEntries(for date: Date) -> [ScheduleEntry] {
+        let weekday = Calendar.current.component(.weekday, from: date)
+        return scheduleEntries.filter { $0.weekday == weekday }
+    }
+
+    // MARK: - One-day schedules
+
+    func overrideIndex(for date: Date) -> Int? {
+        dayOverrides.firstIndex { Calendar.current.isDate($0.date, inSameDayAs: date) }
+    }
+
+    func hasOverride(on date: Date) -> Bool {
+        overrideIndex(for: date) != nil
+    }
+
+    // What a day actually shows: its own list if it has one,
+    // otherwise the usual schedule for that weekday.
+    func entries(for date: Date) -> [ScheduleEntry] {
+        if let index = overrideIndex(for: date) {
+            return dayOverrides[index].entries
+        }
+        return usualEntries(for: date)
+    }
+
+    // Copies the usual schedule into a list that belongs to this date only.
+    func customizeDay(_ date: Date) {
+        guard !hasOverride(on: date) else { return }
+        let weekday = Calendar.current.component(.weekday, from: date)
+        let copies = usualEntries(for: date).map {
+            ScheduleEntry(weekday: weekday,
+                          startMinutes: $0.startMinutes,
+                          endMinutes: $0.endMinutes,
+                          title: $0.title)
+        }
+        dayOverrides.append(DayOverride(date: Calendar.current.startOfDay(for: date),
+                                        entries: copies))
+    }
+
+    // Throws away the day's own list. The day follows the usual schedule again.
+    func resetDay(_ date: Date) {
+        dayOverrides.removeAll { Calendar.current.isDate($0.date, inSameDayAs: date) }
+    }
+
+    // Adds an entry to one date only (making the day's own list first if needed).
+    func addEntry(to date: Date, title: String, startMinutes: Int, endMinutes: Int) {
+        customizeDay(date)
+        guard let index = overrideIndex(for: date) else { return }
+        let weekday = Calendar.current.component(.weekday, from: date)
+        dayOverrides[index].entries.append(
+            ScheduleEntry(weekday: weekday,
+                          startMinutes: startMinutes,
+                          endMinutes: endMinutes,
+                          title: title)
+        )
+    }
+
+    func deleteEntry(id: UUID, on date: Date) {
+        guard let index = overrideIndex(for: date) else { return }
+        dayOverrides[index].entries.removeAll { $0.id == id }
     }
 
     // MARK: - Monthly history

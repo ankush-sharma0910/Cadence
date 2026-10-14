@@ -48,7 +48,7 @@ struct DashboardView: View {
                 // Bottom row: schedule | to-do
                 HStack(spacing: 0) {
                     section(title: scheduleTitle) {
-                        ScheduleView(entries: entriesForSelectedDay,
+                        ScheduleView(entries: store.entries(for: selectedDate),
                                      highlightsCurrent: isViewingToday)
                             // Rebuild when the day changes, so scrolling and highlight reset.
                             .id(Calendar.current.startOfDay(for: selectedDate))
@@ -70,12 +70,6 @@ struct DashboardView: View {
 
     // MARK: - Schedule
 
-    // The usual schedule for the weekday of the selected date.
-    private var entriesForSelectedDay: [ScheduleEntry] {
-        let weekday = Calendar.current.component(.weekday, from: selectedDate)
-        return store.scheduleEntries.filter { $0.weekday == weekday }
-    }
-
     private var editScheduleButton: some View {
         Button { showScheduleEditor = true } label: {
             Image(systemName: "pencil")
@@ -83,10 +77,10 @@ struct DashboardView: View {
                 .foregroundStyle(Theme.textSecondary)
         }
         .buttonStyle(.plain)
-        .help("Edit your usual schedule")
+        .help("Edit the schedule")
         .padding(Theme.padding)
         .popover(isPresented: $showScheduleEditor) {
-            ScheduleEditorView()
+            ScheduleEditorView(date: selectedDate)
                 .environment(store)
         }
     }
@@ -195,14 +189,17 @@ struct DashboardView: View {
 
     // MARK: - Automatic titles
 
-    // "MONDAY", or "TUESDAY · 20 OCT" when you are not looking at today.
+    // "MONDAY", "TUESDAY · 20 OCT", plus "· CUSTOM" when that day has its own schedule.
     private var scheduleTitle: String {
-        let weekday = selectedDate.formatted(.dateTime.weekday(.wide)).uppercased()
-        if isViewingToday {
-            return weekday
+        var title = selectedDate.formatted(.dateTime.weekday(.wide)).uppercased()
+        if !isViewingToday {
+            let day = selectedDate.formatted(.dateTime.day().month(.abbreviated)).uppercased()
+            title += " · \(day)"
         }
-        let day = selectedDate.formatted(.dateTime.day().month(.abbreviated)).uppercased()
-        return "\(weekday) · \(day)"
+        if store.hasOverride(on: selectedDate) {
+            title += " · CUSTOM"
+        }
+        return title
     }
 
     private var todoTitle: String {
