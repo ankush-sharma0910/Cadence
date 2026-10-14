@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ScheduleView: View {
     let entries: [ScheduleEntry]   // already filtered to one weekday
+    var highlightsCurrent = true   // false when looking at a day that is not today
 
     private var sortedEntries: [ScheduleEntry] {
         entries.sorted { $0.startMinutes < $1.startMinutes }
@@ -35,7 +36,8 @@ struct ScheduleView: View {
                     }
                 }
                 .onAppear {
-                    // Jump to the current entry, or the next one coming up.
+                    // Only today jumps to the current or next entry.
+                    guard highlightsCurrent else { return }
                     let target = sortedEntries.first { $0.endMinutes > currentMinutes }
                     if let target {
                         proxy.scrollTo(target.id, anchor: .top)
@@ -46,7 +48,7 @@ struct ScheduleView: View {
     }
 
     private func row(for entry: ScheduleEntry) -> some View {
-        let isCurrent = entry.isActive(at: currentMinutes)
+        let isCurrent = highlightsCurrent && entry.isActive(at: currentMinutes)
         return HStack(spacing: 16) {
             Text(entry.timeRangeText)
                 .font(.system(size: 13).monospacedDigit())

@@ -11,14 +11,18 @@ struct DashboardView: View {
     // The shared data store, provided by CadenceApp.
     @Environment(AppStore.self) private var store
 
-    // The date whose to-do list is shown. Starts as today.
+    // The day being looked at. Starts as today; the magnifying glass changes it.
     @State private var selectedDate = Date()
-    private let today = Date()
 
     // Whether the popovers are open.
     @State private var showLogPanel = false
     @State private var showGoalEditor = false
     @State private var showScheduleEditor = false
+    @State private var showDateSearch = false
+
+    private var isViewingToday: Bool {
+        Calendar.current.isDateInToday(selectedDate)
+    }
 
     var body: some View {
         // Lets us pass two-way links like $store.todos to child views.
@@ -43,8 +47,11 @@ struct DashboardView: View {
 
                 // Bottom row: schedule | to-do
                 HStack(spacing: 0) {
-                    section(title: weekdayTitle) {
-                        ScheduleView(entries: todaysEntries)
+                    section(title: scheduleTitle) {
+                        ScheduleView(entries: entriesForSelectedDay,
+                                     highlightsCurrent: isViewingToday)
+                            // Rebuild when the day changes, so scrolling and highlight reset.
+                            .id(Calendar.current.startOfDay(for: selectedDate))
                     }
                     .overlay(alignment: .bottomTrailing) { editScheduleButton }
 
@@ -63,9 +70,9 @@ struct DashboardView: View {
 
     // MARK: - Schedule
 
-    // Only the entries that belong to today's weekday.
-    private var todaysEntries: [ScheduleEntry] {
-        let weekday = Calendar.current.component(.weekday, from: today)
+    // The usual schedule for the weekday of the selected date.
+    private var entriesForSelectedDay: [ScheduleEntry] {
+        let weekday = Calendar.current.component(.weekday, from: selectedDate)
         return store.scheduleEntries.filter { $0.weekday == weekday }
     }
 
@@ -158,13 +165,26 @@ struct DashboardView: View {
                     .environment(store)
             }
 
-            // Search by date (coming later)
-            Button { } label: {
+            // Search by date
+            Button { showDateSearch = true } label: {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 16))
                     .foregroundStyle(Theme.textPrimary)
             }
             .buttonStyle(.plain)
+            .help("Go to a date")
+            // A small dot while you are looking at a day that is not today.
+            .overlay(alignment: .topTrailing) {
+                if !isViewingToday {
+                    Circle()
+                        .fill(Theme.textPrimary)
+                        .frame(width: 6, height: 6)
+                        .offset(x: 5, y: -3)
+                }
+            }
+            .popover(isPresented: $showDateSearch) {
+                DateSearchView(selectedDate: $selectedDate)
+            }
 
             Spacer()
         }
@@ -175,8 +195,14 @@ struct DashboardView: View {
 
     // MARK: - Automatic titles
 
-    private var weekdayTitle: String {
-        today.formatted(.dateTime.weekday(.wide)).uppercased()
+    // "MONDAY", or "TUESDAY · 20 OCT" when you are not looking at today.
+    private var scheduleTitle: String {
+        let weekday = selectedDate.formatted(.dateTime.weekday(.wide)).uppercased()
+        if isViewingToday {
+            return weekday
+        }
+        let day = selectedDate.formatted(.dateTime.day().month(.abbreviated)).uppercased()
+        return "\(weekday) · \(day)"
     }
 
     private var todoTitle: String {
