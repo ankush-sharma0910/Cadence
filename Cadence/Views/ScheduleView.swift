@@ -10,13 +10,13 @@ import SwiftUI
 struct ScheduleView: View {
     let entries: [ScheduleEntry]   // already filtered to one weekday
     var highlightsCurrent = true   // false when looking at a day that is not today
+    var now = Date()               // refreshed by the dashboard, so the highlight moves
 
     private var sortedEntries: [ScheduleEntry] {
         entries.sorted { $0.startMinutes < $1.startMinutes }
     }
 
     private var currentMinutes: Int {
-        let now = Date()
         let calendar = Calendar.current
         return calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)
     }

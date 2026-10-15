@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AppKit
 
 struct DashboardView: View {
     // The shared data store, provided by CadenceApp.
@@ -13,6 +14,15 @@ struct DashboardView: View {
 
     // The day being looked at. Starts as today; the magnifying glass changes it.
     @State private var selectedDate = Date()
+
+    // True while you have not picked another date, so we move to the new day at midnight.
+    @State private var followingToday = true
+
+    // The current time, refreshed regularly so "now" stays correct.
+    @State private var now = Date()
+
+    // Each time this goes up, the to-do panel focuses its "Add a task" box.
+    @State private var addTodoRequest = 0
 
     // Whether the popovers are open.
     @State private var showLogPanel = false
@@ -49,7 +59,8 @@ struct DashboardView: View {
                 HStack(spacing: 0) {
                     section(title: scheduleTitle) {
                         ScheduleView(entries: store.entries(for: selectedDate),
-                                     highlightsCurrent: isViewingToday)
+                                     highlightsCurrent: isViewingToday,
+                                     now: now)
                             // Rebuild when the day changes, so scrolling and highlight reset.
                             .id(Calendar.current.startOfDay(for: selectedDate))
                     }
@@ -58,7 +69,9 @@ struct DashboardView: View {
                     verticalLine
 
                     section(title: todoTitle) {
-                        TodoView(todos: $store.todos, date: selectedDate)
+                        TodoView(todos: $store.todos,
+                                 date: selectedDate,
+                                 focusRequest: addTodoRequest)
                     }
                 }
             }
@@ -66,6 +79,33 @@ struct DashboardView: View {
         .background(Theme.background)
         .frame(minWidth: 840, minHeight: 600)
         .preferredColorScheme(.dark)
+        // Remember whether you are following today or looking at another date.
+        .onChange(of: selectedDate) {
+            followingToday = Calendar.current.isDateInToday(selectedDate)
+        }
+        // Refresh "now" every 30 seconds.
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(30))
+                refreshNow()
+            }
+        }
+        // And straight away when you switch back to Cadence (e.g. after the Mac wakes up).
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            refreshNow()
+        }
+    }
+
+    // MARK: - Keeping today correct
+
+    private func refreshNow() {
+        now = Date()
+        if Calendar.current.isDateInToday(selectedDate) {
+            followingToday = true
+        } else if followingToday {
+            // Midnight passed while you were looking at "today": move to the new today.
+            selectedDate = Date()
+        }
     }
 
     // MARK: - Schedule
@@ -136,7 +176,7 @@ struct DashboardView: View {
             Menu {
                 Button("New goal") { showGoalEditor = true }
                 Button("New schedule entry") { showScheduleEditor = true }
-                Button("New to-do") { }
+                Button("New to-do") { addTodoRequest += 1 }
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 16))

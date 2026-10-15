@@ -13,9 +13,11 @@ struct TodoView: View {
 
     @Binding var todos: [TodoItem]   // all tasks, owned by the store
     let date: Date                   // the day being shown
+    var focusRequest = 0             // each time this number goes up, focus the "Add a task" box
 
     @State private var newTitle = ""
     @State private var showHistory = false
+    @FocusState private var addFieldFocused: Bool
 
     // Only the tasks that belong to the shown day.
     private var dayTodos: [TodoItem] {
@@ -68,7 +70,8 @@ struct TodoView: View {
                             TodoRow(
                                 todo: todo,
                                 onToggle: { toggle(todo.id) },
-                                onDelete: { delete(todo.id) }
+                                onDelete: { delete(todo.id) },
+                                onRename: { newTitle in rename(todo.id, to: newTitle) }
                             )
                         }
                     }
@@ -76,6 +79,10 @@ struct TodoView: View {
             }
 
             addField
+        }
+        // The "New to-do" menu item bumps focusRequest, which puts the cursor in the add box.
+        .onChange(of: focusRequest) {
+            addFieldFocused = true
         }
     }
 
@@ -143,6 +150,7 @@ struct TodoView: View {
                 .textFieldStyle(.plain)
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.textPrimary)
+                .focused($addFieldFocused)
                 .onSubmit { add() }      // pressing Return adds the task
         }
         .padding(.top, 12)
@@ -174,15 +182,24 @@ struct TodoView: View {
             todos.removeAll { $0.id == id }
         }
     }
+
+    private func rename(_ id: UUID, to title: String) {
+        guard let index = todos.firstIndex(where: { $0.id == id }) else { return }
+        todos[index].title = title
+    }
 }
 
-// One row: checkbox, title, and a delete button that appears on hover.
+// One row: checkbox, title (double-click to edit), and a delete button on hover.
 private struct TodoRow: View {
     let todo: TodoItem
     let onToggle: () -> Void
     let onDelete: () -> Void
+    let onRename: (String) -> Void
 
     @State private var isHovering = false
+    @State private var isEditing = false
+    @State private var draft = ""
+    @FocusState private var isFocused: Bool
 
     var body: some View {
         HStack(spacing: 12) {
@@ -193,12 +210,28 @@ private struct TodoRow: View {
             }
             .buttonStyle(.plain)
 
-            Text(todo.title)
-                .font(.system(size: 14))
-                .strikethrough(todo.isDone)
-                .foregroundStyle(todo.isDone ? Theme.textSecondary : Theme.textPrimary)
-
-            Spacer()
+            if isEditing {
+                TextField("Task", text: $draft)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 14))
+                    .foregroundStyle(Theme.textPrimary)
+                    .focused($isFocused)
+                    .onSubmit { commitEdit() }                 // Return saves
+                    .onExitCommand { isEditing = false }       // Escape cancels
+                    .onAppear { isFocused = true }
+                    .onChange(of: isFocused) {
+                        if !isFocused { commitEdit() }         // clicking elsewhere saves
+                    }
+            } else {
+                Text(todo.title)
+                    .font(.system(size: 14))
+                    .strikethrough(todo.isDone)
+                    .foregroundStyle(todo.isDone ? Theme.textSecondary : Theme.textPrimary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .help("Double-click to edit")
+                    .onTapGesture(count: 2) { startEditing() }
+            }
 
             Button(action: onDelete) {
                 Image(systemName: "xmark")
@@ -211,6 +244,21 @@ private struct TodoRow: View {
         .padding(.vertical, 10)
         .contentShape(Rectangle())
         .onHover { isHovering = $0 }
+    }
+
+    private func startEditing() {
+        draft = todo.title
+        isEditing = true
+    }
+
+    // Saves the new title (ignored if empty or unchanged) and leaves edit mode.
+    private func commitEdit() {
+        guard isEditing else { return }
+        isEditing = false
+        let title = draft.trimmingCharacters(in: .whitespaces)
+        if !title.isEmpty && title != todo.title {
+            onRename(title)
+        }
     }
 }
 
